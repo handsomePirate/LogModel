@@ -1,8 +1,71 @@
 #include "OrientedGraph.hpp"
+#include <stack>
 
 OrientedGraph::OrientedGraph(int maxVertexCount)
 {
 	graph_.resize(maxVertexCount);
+}
+
+int OrientedGraph::GetLoopCount() const
+{
+	int result = 0;
+	std::map<int, int> toBeVisited;
+	for (int i = 0; i < graph_.size(); ++i)
+	{
+		if (graph_[i].next.size() > 0)
+		{
+			toBeVisited[i] = graph_[i].next.size();
+		}
+	}
+	while (!toBeVisited.empty())
+	{
+		std::stack<int> dfsStack;
+		int first = toBeVisited.begin()->first;
+		auto it = toBeVisited.find(first);
+		if (it->second == 1)
+		{
+			toBeVisited.erase(it);
+		}
+		else
+		{
+			--it->second;
+		}
+		dfsStack.push(first);
+		std::set<int> currentlyVisited;
+		while (!dfsStack.empty())
+		{
+			int node = dfsStack.top();
+			dfsStack.pop();
+			
+			currentlyVisited.insert(node);
+
+			auto next = graph_[node].next;
+			while (!next.empty())
+			{
+				int nextNode = next.front();
+				next.pop();
+				if (currentlyVisited.find(nextNode) != currentlyVisited.end())
+				{
+					++result;
+					continue;
+				}
+				dfsStack.push(nextNode);
+				auto it = toBeVisited.find(nextNode);
+				if (it != toBeVisited.end())
+				{
+					if (it->second == 1)
+					{
+						toBeVisited.erase(it);
+					}
+					else
+					{
+						--it->second;
+					}
+				}
+			}
+		}
+	}
+	return result;
 }
 
 void OrientedGraph::AddOrientedEdge(int a, int b)

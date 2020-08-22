@@ -269,22 +269,22 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 				{
 					if (package.state == Package::State::IN_PLANE)
 					{
-						cumulativeCost += 11;
+						cumulativeCost += Action::dropOffCost;
 					}
 					if (package.position != package.destination)
 					{
 						if (package.state != Package::State::IN_TRUCK)
 						{
-							cumulativeCost += 2;
+							cumulativeCost += Action::loadUnloadCost;
 						}
-						cumulativeCost += 2;
+						cumulativeCost += Action::loadUnloadCost;
 						rideDestinations.insert(package.destination);
 					}
 					else
 					{
 						if (package.state == Package::State::IN_TRUCK)
 						{
-							cumulativeCost += 2;
+							cumulativeCost += Action::loadUnloadCost;
 						}
 					}
 				}
@@ -297,14 +297,14 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 					{
 						if (package.state == Package::State::OUT)
 						{
-							cumulativeCost += 2;
+							cumulativeCost += Action::loadUnloadCost;
 						}
-						cumulativeCost += 2;
+						cumulativeCost += Action::loadUnloadCost;
 						rideDestinations.insert(currentAirport);
 					}
 					if (destinationAirport != package.destination)
 					{
-						cumulativeCost += 2 + 2;
+						cumulativeCost += 2 * Action::loadUnloadCost;
 						rideDestinations.insert(package.destination);
 					}
 
@@ -312,29 +312,66 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 					{
 						if (package.state == Package::State::IN_TRUCK)
 						{
-							cumulativeCost += 2 + 14;
+							cumulativeCost += Action::loadUnloadCost + Action::pickUpCost;
 						}
 						if (package.state == Package::State::OUT)
 						{
-							cumulativeCost += 14;
+							cumulativeCost += Action::pickUpCost;
 						}
 					}
 					else
 					{
-						cumulativeCost += 14;
+						cumulativeCost += Action::pickUpCost;
 					}
-					cumulativeCost += 11;
+					cumulativeCost += Action::dropOffCost;
 					flightDestinations.insert(destinationAirport);
 				}
 			}
 		}
 	}
 
-	int rideCount = rideDestinations.size();
+	OrientedGraph rideGraph(setting.PlaceCount());
+
+	for (auto&& package : packages)
+	{
+		if (package.position != package.destination)
+		{
+			rideGraph.AddOrientedEdge(package.position, package.destination);
+		}
+	}
+
+	int loops = rideGraph.GetLoopCount();
+
+	std::set<int> placesToVisitTrucks;
+
+	for (auto&& package : packages)
+	{
+		if (package.position != package.destination)
+		{
+			placesToVisitTrucks.insert(package.position);
+			placesToVisitTrucks.insert(package.destination);
+		}
+	}
+
+	int trucksInPlace = 0;
+	std::set<int> occupiedPlaces;
+	for (auto&& truck : trucks)
+	{
+		for (auto&& package : packages)
+		{
+			if (package.position == truck.position && occupiedPlaces.find(truck.position) == occupiedPlaces.end())
+			{
+				occupiedPlaces.insert(truck.position);
+				++trucksInPlace;
+			}
+		}
+	}
+
+	int rideCount = placesToVisitTrucks.size() + loops - trucksInPlace;// rideDestinations.size();
 	int flightCount = flightDestinations.size();
 	
-	cumulativeCost += rideCount * 17;
-	cumulativeCost += flightCount * 1000;
+	cumulativeCost += rideCount * Action::driveCost;
+	cumulativeCost += flightCount * Action::flyCost;
 
 	return cumulativeCost;
 }
@@ -482,20 +519,20 @@ Action::Action(Type type, std::pair<int, int> valuePair)
 	switch (type)
 	{
 	case Action::Type::DRIVE:
-		cost = 17;
+		cost = driveCost;
 		break;
 	case Action::Type::LOAD:
 	case Action::Type::UNLOAD:
-		cost = 2;
+		cost = loadUnloadCost;
 		break;
 	case Action::Type::FLY:
-		cost = 1000;
+		cost = flyCost;
 		break;
 	case Action::Type::PICK_UP:
-		cost = 14;
+		cost = pickUpCost;
 		break;
 	case Action::Type::DROP_OFF:
-		cost = 11;
+		cost = dropOffCost;
 		break;
 	default:
 		throw std::runtime_error("Undefined action value!");

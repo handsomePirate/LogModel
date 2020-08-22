@@ -40,6 +40,12 @@ public:
 	} type;
 	std::pair<int, int> valuePair;
 
+	static const int driveCost = 17;
+	static const int loadUnloadCost = 2;
+	static const int flyCost = 1000;
+	static const int pickUpCost = 14;
+	static const int dropOffCost = 11;
+
 	Action() = default;
 	virtual ~Action() override {};
 
