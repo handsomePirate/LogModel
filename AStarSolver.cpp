@@ -1,11 +1,20 @@
 #include "AStarSolver.hpp"
 #include <iostream>
-#include <set>
+#include <queue>
 #include <string>
+
+struct CompareNodes
+{
+	bool operator()(const std::shared_ptr<Node>& n1, std::shared_ptr<Node> n2)
+	{
+		return n1->heuristicCost > n2->heuristicCost ||
+			(n1->heuristicCost == n2->heuristicCost && n1->depth < n2->depth);
+	}
+};
 
 int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAction>>& solution, int maxIterations)
 {
-	std::multiset<std::shared_ptr<Node>> fringe;
+	std::priority_queue<std::shared_ptr<Node>> fringe;
 
 	if (maxIterations == INT32_MAX)
 		std::cout << "===========PRECISE SEARCH===========" << std::endl << std::endl;
@@ -26,7 +35,7 @@ int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAct
 		std::shared_ptr<Node> initialNode = std::make_shared<Node>();
 		initialNode->depth = 0;
 		initialNode->pathCost = 0;
-		fringe.insert(initialNode);
+		fringe.push(initialNode);
 		int nextDeepeningStop = INT32_MAX;
 
 		currentBestPathNode = initialNode;
@@ -35,23 +44,9 @@ int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAct
 		// While there are nodes to consider.
 		while (!fringe.empty())
 		{
-			auto fringeIt = fringe.begin();
 			// For each step, expand the best node.
-			std::shared_ptr<Node> bestNode = (*fringeIt);
-			// Find the best node using the heuristic.
-			for (int i = 1; i < fringe.size(); ++i)
-			{
-				if ((*fringeIt)->heuristicCost == -1)
-				{
-					(*fringeIt)->heuristicCost = NodeHeuristicCost(*fringeIt, initialState);
-				}
-				if (!bestNode || bestNode->heuristicCost > (*fringeIt)->heuristicCost || 
-					(bestNode->heuristicCost == (*fringeIt)->heuristicCost && bestNode->depth < (*fringeIt)->depth))
-				{
-					bestNode = (*fringeIt);
-				}
-				std::advance(fringeIt, 1);
-			}
+			std::shared_ptr<Node> bestNode = fringe.top();
+			fringe.pop();
 
 			lastDepth = bestNode->depth;
 
@@ -99,12 +94,9 @@ int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAct
 				{
 					std::shared_ptr<Node> insertedNode = MakeNode(bestNode, action);
 
-					fringe.insert(insertedNode);
+					fringe.push(insertedNode);
 				}
 			}
-
-			// Delete the expanded node from the tree.
-			fringe.erase(bestNode);
 		}
 		deepeningStop = nextDeepeningStop;
 		std::cout << "Done with iteration number " + std::to_string(deepeningIteration++) + "." << std::endl;

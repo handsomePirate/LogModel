@@ -5,6 +5,19 @@
 #include <fstream>
 #include <chrono>
 
+bool FileExists(const std::string& filename)
+{
+	// Try to open the file, if we could extablish a connection, it exists.
+	FILE* f;
+	fopen_s(&f, filename.c_str(), "rb");
+	if (f)
+	{
+		fclose(f);
+		return true;
+	}
+	return false;
+}
+
 int main(int argc, char* argv[])
 {
 	if (argc <= 1)
@@ -30,7 +43,7 @@ int main(int argc, char* argv[])
 		std::cout << std::endl << "-- cost: " << cost << std::endl;
 
 		std::ofstream ofs("results.txt", std::ofstream::out | std::ofstream::app);
-		ofs << timeElapsedNano / 1000000.f << std::endl;
+		std::cout << "in " << timeElapsedNano / 1000000.f << " ms" << std::endl;
 	}
 
 	return 0;
