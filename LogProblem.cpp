@@ -253,8 +253,6 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 	const LogSetting& setting)
 {
 	int cumulativeCost = 0;
-	//std::map<int, std::set<int>> rides;
-	//std::map<int, std::set<int>> flights;
 
 	std::set<int> rideDestinations;
 	std::set<int> flightDestinations;
@@ -280,7 +278,6 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 							cumulativeCost += 2;
 						}
 						cumulativeCost += 2;
-						//rides[place].insert(package.destination);
 						rideDestinations.insert(package.destination);
 					}
 					else
@@ -303,13 +300,11 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 							cumulativeCost += 2;
 						}
 						cumulativeCost += 2;
-						//rides[place].insert(currentAirport);
 						rideDestinations.insert(currentAirport);
 					}
 					if (destinationAirport != package.destination)
 					{
 						cumulativeCost += 2 + 2;
-						//rides[destinationAirport].insert(package.destination);
 						rideDestinations.insert(package.destination);
 					}
 
@@ -329,7 +324,6 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 						cumulativeCost += 14;
 					}
 					cumulativeCost += 11;
-					//flights[currentAirport].insert(destinationAirport);
 					flightDestinations.insert(destinationAirport);
 				}
 			}
@@ -338,67 +332,6 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 
 	int rideCount = 0;
 	int flightCount = 0;
-	/*
-	OrientedGraph rideGraph(setting.PlaceCount());
-	OrientedGraph flightGraph(setting.CityCount());
-
-	for (auto&& package : packages)
-	{
-		if (package.position != package.destination)
-		{
-			rideGraph.AddOrientedEdge(package.position, package.destination);
-		}
-		if (setting.GetPlaceCity(package.position) != setting.GetPlaceCity(package.destination))
-		{
-			flightGraph.AddOrientedEdge(
-				setting.GetPlaceCity(package.position), setting.GetPlaceCity(package.destination));
-		}
-	}
-
-	auto rideLooseEnds = rideGraph.EnumerateLooseEnds();
-	auto flightLooseEnds = flightGraph.EnumerateLooseEnds();
-
-	bool truckPresent = false;
-	for (int looseEnd : rideLooseEnds)
-	{
-		for (auto&& truck : trucks)
-		{
-			if (truck.position == looseEnd)
-			{
-				truckPresent = true;
-				break;
-			}
-		}
-		if (truckPresent)
-		{
-			break;
-		}
-	}
-	if (!truckPresent && !rideLooseEnds.empty())
-	{
-		++rideCount;
-	}
-
-	bool planePresent = false;
-	for (int looseEnd : flightLooseEnds)
-	{
-		for (auto&& truck : trucks)
-		{
-			if (truck.position == looseEnd)
-			{
-				planePresent = true;
-				break;
-			}
-		}
-		if (planePresent)
-		{
-			break;
-		}
-	}
-	if (!planePresent && !flightLooseEnds.empty())
-	{
-		++flightCount;
-	}*/
 
 	rideCount += rideDestinations.size();
 	flightCount += flightDestinations.size();
