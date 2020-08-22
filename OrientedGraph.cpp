@@ -6,7 +6,7 @@ OrientedGraph::OrientedGraph(int maxVertexCount)
 	graph_.resize(maxVertexCount);
 }
 
-int OrientedGraph::GetLoopCount() const
+int OrientedGraph::GetLoopCount()
 {
 	int result = 0;
 	std::map<int, int> toBeVisited;
@@ -39,11 +39,10 @@ int OrientedGraph::GetLoopCount() const
 			
 			currentlyVisited.insert(node);
 
-			auto next = graph_[node].next;
-			while (!next.empty())
+			while (!graph_[node].next.empty())
 			{
-				int nextNode = next.front();
-				next.pop();
+				int nextNode = graph_[node].next.front();
+				graph_[node].next.pop();
 				if (currentlyVisited.find(nextNode) != currentlyVisited.end())
 				{
 					++result;

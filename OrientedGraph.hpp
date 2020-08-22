@@ -14,7 +14,7 @@ class OrientedGraph
 {
 public:
 	OrientedGraph(int maxVertexCount);
-	int GetLoopCount() const;
+	int GetLoopCount();
 	void AddOrientedEdge(int a, int b);
 	int DriveThrough(int from);
 	int FindRideStart() const;
