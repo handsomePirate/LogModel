@@ -340,20 +340,6 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 		}
 	}
 
-	int loops = rideGraph.GetLoopCount();
-
-	std::set<int> placesToVisitTrucks;
-
-	for (auto&& package : packages)
-	{
-		if (package.position != package.destination)
-		{
-			placesToVisitTrucks.insert(package.position);
-			placesToVisitTrucks.insert(package.destination);
-		}
-	}
-
-	int trucksInPlace = 0;
 	std::set<int> occupiedPlaces;
 	for (auto&& truck : trucks)
 	{
@@ -362,12 +348,26 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 			if (package.position == truck.position && occupiedPlaces.find(truck.position) == occupiedPlaces.end())
 			{
 				occupiedPlaces.insert(truck.position);
-				++trucksInPlace;
 			}
 		}
 	}
 
-	int rideCount = placesToVisitTrucks.size() + loops - trucksInPlace;// rideDestinations.size();
+	int loops = rideGraph.GetLoopCount(occupiedPlaces);
+
+	std::set<int> placesToVisitTrucks;
+	for (auto&& package : packages)
+	{
+		if (package.position != package.destination)
+		{
+			if (occupiedPlaces.find(package.position) == occupiedPlaces.end())
+			{
+				placesToVisitTrucks.insert(package.position);
+			}
+			placesToVisitTrucks.insert(package.destination);
+		}
+	}
+
+	int rideCount = placesToVisitTrucks.size() + loops;// rideDestinations.size();
 	int flightCount = flightDestinations.size();
 	
 	cumulativeCost += rideCount * Action::driveCost;

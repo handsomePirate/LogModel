@@ -6,7 +6,7 @@ OrientedGraph::OrientedGraph(int maxVertexCount)
 	graph_.resize(maxVertexCount);
 }
 
-int OrientedGraph::GetLoopCount()
+int OrientedGraph::GetLoopCount(std::set<int> occupiedPlaces)
 {
 	int result = 0;
 	std::map<int, int> toBeVisited;
@@ -20,7 +20,19 @@ int OrientedGraph::GetLoopCount()
 	while (!toBeVisited.empty())
 	{
 		std::stack<int> dfsStack;
-		int first = toBeVisited.begin()->first;
+		int first = -1;
+		bool truckRide = false;
+		if (occupiedPlaces.empty() || toBeVisited.find(*occupiedPlaces.begin()) == toBeVisited.end())
+		{
+			first = toBeVisited.begin()->first;
+		}
+		else
+		{
+			auto it = occupiedPlaces.begin();
+			first = *it;
+			occupiedPlaces.erase(it);
+			truckRide = true;
+		}
 		auto it = toBeVisited.find(first);
 		if (it->second == 1)
 		{
@@ -45,7 +57,10 @@ int OrientedGraph::GetLoopCount()
 				graph_[node].next.pop();
 				if (currentlyVisited.find(nextNode) != currentlyVisited.end())
 				{
-					++result;
+					if (first != nextNode || !truckRide)
+					{
+						++result;
+					}
 					continue;
 				}
 				dfsStack.push(nextNode);
