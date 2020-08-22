@@ -1,6 +1,6 @@
 #pragma once
 #include <memory>
-#include <unordered_set>
+#include <queue>
 
 // A class to be used as an interface to the state of the search.
 class IState
@@ -11,6 +11,7 @@ public:
 	virtual ~IState() {};
 
 	int Heuristic() const { return heuristic; }
+	virtual IState* Clone() const { return nullptr; };
 
 protected:
 	// The heuristic value of this state (how close is it to the solution).
@@ -23,7 +24,6 @@ class IAction
 public:
 	friend struct IActionHash;
 	int cost;
-	std::shared_ptr<IState> state;
 
 	virtual ~IAction() {};
 
@@ -53,10 +53,10 @@ public:
 	virtual ~IProblem() {}
 
 	// Should return the state that we want to start our search from.
-	virtual std::shared_ptr<IState> GetInitialState() const = 0;
+	virtual IState const* GetInitialState() const = 0;
 	// Should return true, if the state parameter is the goal state.
-	virtual bool IsGoalState(const std::shared_ptr<IState>& state) const = 0;
+	virtual bool IsGoalState(IState const* state) const = 0;
 	// Should enumerate all actions that can be taken from the input state.
-	virtual void EnumeratePossibleActions(const std::shared_ptr<IState>& state,
-		std::unordered_set<std::unique_ptr<IAction>, IActionHash>& possibleActions) const = 0;
+	virtual void EnumeratePossibleActions(IState const* state,
+		std::queue<std::pair<IAction*, IState*>>& possibleActions) const = 0;
 };

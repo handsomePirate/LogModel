@@ -1,11 +1,12 @@
 #include "AStarSolver.hpp"
 #include <iostream>
 #include <queue>
+#include <set>
 #include <string>
 
 struct CompareNodes
 {
-	bool operator()(const std::shared_ptr<Node>& n1, std::shared_ptr<Node> n2)
+	bool operator()(const std::unique_ptr<Node>& n1, const std::unique_ptr<Node>& n2)	
 	{
 		return n1->heuristicCost > n2->heuristicCost ||
 			(n1->heuristicCost == n2->heuristicCost && n1->depth < n2->depth);
@@ -14,47 +15,43 @@ struct CompareNodes
 
 int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAction>>& solution, int maxIterations)
 {
-	std::priority_queue<std::shared_ptr<Node>> fringe;
+	std::priority_queue<std::unique_ptr<Node>, std::vector<std::unique_ptr<Node>>, CompareNodes> fringe;
 
 	if (maxIterations == INT32_MAX)
 		std::cout << "===========PRECISE SEARCH===========" << std::endl << std::endl;
 	else
 		std::cout << "===========LIMITED SEARCH===========" << std::endl << "--iteration limit: " << maxIterations << std::endl << std::endl;
 
-	std::shared_ptr<IState> initialState = problem.GetInitialState();
+	IState const* initialState = problem.GetInitialState();
 
 	int deepeningStop = initialState->Heuristic();
 	int deepeningIteration = 0;
-	std::shared_ptr<Node> currentBestPathNode;
+	std::unique_ptr<Node> currentBestPathNode = nullptr;
 
-	int lastDepth = 0;
 	// Iterative deepening.
 	while (deepeningIteration < maxIterations)
 	{
 		// Start with the initial state.
-		std::shared_ptr<Node> initialNode = std::make_shared<Node>();
+		Node* initialNode = new Node;
 		initialNode->depth = 0;
 		initialNode->pathCost = 0;
-		fringe.push(initialNode);
+		initialNode->state = std::unique_ptr<IState>(initialState->Clone());
+		fringe.emplace(initialNode);
 		int nextDeepeningStop = INT32_MAX;
 
-		currentBestPathNode = initialNode;
+		currentBestPathNode = std::unique_ptr<Node>(new Node((Node const*)initialNode));
 		initialNode->heuristicCost = initialState->Heuristic();
 
 		// While there are nodes to consider.
 		while (!fringe.empty())
 		{
 			// For each step, expand the best node.
-			std::shared_ptr<Node> bestNode = fringe.top();
+			std::unique_ptr<Node> bestNode = std::unique_ptr<Node>(new Node(fringe.top().get()));
 			fringe.pop();
-
-			lastDepth = bestNode->depth;
 
 			// Test for goal state.
 			int bestActionLength = (int)bestNode->actionsToReach.size();
-			const std::shared_ptr<IState>& state = bestActionLength > 0 ?
-				bestNode->actionsToReach[bestActionLength - 1]->state :
-				problem.GetInitialState();
+			IState const* state = bestActionLength > 0 ? bestNode->state.get() : problem.GetInitialState();
 			if (problem.IsGoalState(state))
 			{
 				std::cout << "Found the solution at iteration number " + std::to_string(deepeningIteration++) + "." << std::endl;
@@ -68,21 +65,23 @@ int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAct
 
 			if (bestNode->depth != 0)
 			{
-				if (currentBestPathNode->depth == 0 || bestNode->actionsToReach[bestNode->actionsToReach.size() - 1]->state->Heuristic() <=
-					currentBestPathNode->actionsToReach[currentBestPathNode->actionsToReach.size() - 1]->state->Heuristic())
+				if (currentBestPathNode->depth == 0 || bestNode->state->Heuristic() <=
+					currentBestPathNode->state->Heuristic())
 				{
-					currentBestPathNode = bestNode;
+					currentBestPathNode = std::unique_ptr<Node>(new Node((Node const*)bestNode.get()));
 				}
 			}
 
 			// Enumerate all the states that are reachable (by an action) from the best node state to the fringe.
-			std::unordered_set<std::unique_ptr<IAction>, IActionHash> actions;
+			std::queue<std::pair<IAction*, IState*>> actions;
 
 			problem.EnumeratePossibleActions(state, actions);
 
-			for (const std::unique_ptr<IAction>& action : actions)
+			while (!actions.empty())
 			{
-				int heuristicCost = bestNode->pathCost + action->cost + action->state->Heuristic();
+				auto actionPair = actions.front();
+				actions.pop();
+				int heuristicCost = bestNode->pathCost + actionPair.first->cost + actionPair.second->Heuristic();
 				if (heuristicCost > deepeningStop)
 				{
 					if (nextDeepeningStop > heuristicCost)
@@ -92,9 +91,9 @@ int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAct
 				}
 				else
 				{
-					std::shared_ptr<Node> insertedNode = MakeNode(bestNode, action);
+					Node* insertedNode = MakeNode(bestNode.get(), actionPair.first, actionPair.second, heuristicCost);
 
-					fringe.push(insertedNode);
+					fringe.emplace(insertedNode);
 				}
 			}
 		}
@@ -102,33 +101,38 @@ int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAct
 		std::cout << "Done with iteration number " + std::to_string(deepeningIteration++) + "." << std::endl;
 	}
 
-	solution.reserve(currentBestPathNode->actionsToReach.size());
-	for (const std::unique_ptr<IAction>& action : currentBestPathNode->actionsToReach)
+	if (currentBestPathNode)
 	{
-		solution.emplace_back(action->Clone());
+		solution.reserve(currentBestPathNode->actionsToReach.size());
+		for (const std::unique_ptr<IAction>& action : currentBestPathNode->actionsToReach)
+		{
+			solution.emplace_back(action->Clone());
+		}
 	}
 	return INT32_MAX;
 }
 
-int AStarSolver::NodeHeuristicCost(const std::shared_ptr<Node>& node, const std::shared_ptr<IState>& initialState)
+int AStarSolver::NodeHeuristicCost(Node const* node, const std::shared_ptr<IState>& initialState)
 {
 	int actionLength = (int)node->actionsToReach.size();
-	return node->pathCost + (actionLength ? node->actionsToReach[actionLength - 1]->state->Heuristic() :
+	return node->pathCost + (actionLength ? node->state->Heuristic() :
 		initialState->Heuristic());
 }
 
-std::shared_ptr<Node> AStarSolver::MakeNode(const std::shared_ptr<Node>& originalNode, const std::unique_ptr<IAction>& action)
+Node* AStarSolver::MakeNode(Node const* originalNode, IAction* action, IState* state, int heuristicCost)
 {
-	std::shared_ptr<Node> newNode = std::make_shared<Node>();
+	Node* newNode = new Node;
 	newNode->pathCost = originalNode->pathCost + action->cost;
 	newNode->depth = originalNode->depth + 1;
+	newNode->state = std::unique_ptr<IState>(state);
+	newNode->heuristicCost = heuristicCost;
 
 	newNode->actionsToReach.reserve(originalNode->actionsToReach.size() + 1);
 	for (const std::unique_ptr<IAction>& action : originalNode->actionsToReach)
 	{
 		newNode->actionsToReach.emplace_back(action->Clone());
 	}
-	newNode->actionsToReach.emplace_back(action->Clone());
+	newNode->actionsToReach.emplace_back(action);
 
 	return newNode;
 }

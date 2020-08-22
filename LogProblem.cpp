@@ -7,7 +7,7 @@
 
 LogProblem::LogProblem(const std::string& file)
 	: setting_(file), initialConfiguration_(
-		std::make_shared<LogConfiguration>(file, setting_)) {}
+		std::make_unique<LogConfiguration>(file, setting_)) {}
 
 void LogProblem::OutputSolution(std::ostream& out, const std::vector<std::unique_ptr<IAction>>& solution)
 {
@@ -44,14 +44,14 @@ void LogProblem::OutputSolution(std::ostream& out, const std::vector<std::unique
 	}
 }
 
-std::shared_ptr<IState> LogProblem::GetInitialState() const
+IState const* LogProblem::GetInitialState() const
 {
-	return initialConfiguration_;
+	return initialConfiguration_.get();
 }
 
-bool LogProblem::IsGoalState(const std::shared_ptr<IState>& state) const
+bool LogProblem::IsGoalState(IState const* state) const
 {
-	std::shared_ptr<LogConfiguration> configuration = (const std::shared_ptr<LogConfiguration>&)state;
+	LogConfiguration const* configuration = (LogConfiguration const*) state;
 	for (const auto& package : configuration->GetPackagesConstReference())
 	{
 		if (package.position != package.destination || package.state != Package::State::OUT)
@@ -61,10 +61,10 @@ bool LogProblem::IsGoalState(const std::shared_ptr<IState>& state) const
 	return true;
 }
 
-void LogProblem::EnumeratePossibleActions(const std::shared_ptr<IState>& state,
-	std::unordered_set<std::unique_ptr<IAction>, IActionHash>& possibleActions) const
+void LogProblem::EnumeratePossibleActions(IState const* state,
+	std::queue<std::pair<IAction*, IState*>>& possibleActions) const
 {
-	std::shared_ptr<LogConfiguration> configuration = (const std::shared_ptr<LogConfiguration>&)state;
+	LogConfiguration const* configuration = (LogConfiguration const*)state;
 	const std::vector<Vehicle>& trucks = configuration->GetTrucksConstReference();
 	const std::vector<Vehicle>& airplanes = configuration->GetAirplanesConstReference();
 	const std::vector<Package>& packages = configuration->GetPackagesConstReference();
@@ -78,8 +78,9 @@ void LogProblem::EnumeratePossibleActions(const std::shared_ptr<IState>& state,
 		{
 			if (place != truckObject.position)
 			{
-				possibleActions.insert(
-					std::unique_ptr<Action>(new Action(Action::Type::DRIVE, { truck, place }, configuration, setting_)));
+				Action* action = new Action(Action::Type::DRIVE, { truck, place });
+				LogConfiguration* state = configuration->GetNewConfiguration(*action, setting_);
+				possibleActions.push({ action, state });
 			}
 		}
 	}
@@ -90,13 +91,15 @@ void LogProblem::EnumeratePossibleActions(const std::shared_ptr<IState>& state,
 		const Package& packageObject = packages[package];
 		if (packageObject.state == Package::State::IN_PLANE)
 		{
-			possibleActions.insert(std::unique_ptr<Action>(new Action(Action::Type::DROP_OFF,
-				{ packageObject.vehicle, package }, configuration, setting_)));
+			Action* action = new Action(Action::Type::DROP_OFF, { packageObject.vehicle, package });
+			LogConfiguration* state = configuration->GetNewConfiguration(*action, setting_);
+			possibleActions.push({ action, state });
 		}
 		else if (packageObject.state == Package::State::IN_TRUCK)
 		{
-			possibleActions.insert(std::unique_ptr<Action>(new Action(Action::Type::UNLOAD,
-				{ packageObject.vehicle, package }, configuration, setting_)));
+			Action* action = new Action(Action::Type::UNLOAD, { packageObject.vehicle, package });
+			LogConfiguration* state = configuration->GetNewConfiguration(*action, setting_);
+			possibleActions.push({ action, state });
 		}
 	}
 
@@ -111,8 +114,9 @@ void LogProblem::EnumeratePossibleActions(const std::shared_ptr<IState>& state,
 			{
 				if (trucks[truck].position == packageObject.position && trucks[truck].load.size() < truckCapacity)
 				{
-					possibleActions.insert(std::unique_ptr<Action>(new Action(Action::Type::LOAD,
-						{ truck, package }, configuration, setting_)));
+					Action* action = new Action(Action::Type::LOAD, { truck, package });
+					LogConfiguration* state = configuration->GetNewConfiguration(*action, setting_);
+					possibleActions.push({ action, state });
 				}
 			}
 
@@ -120,8 +124,9 @@ void LogProblem::EnumeratePossibleActions(const std::shared_ptr<IState>& state,
 			{
 				if (airplanes[airplane].position == packageObject.position && airplanes[airplane].load.size() < planeCapacity)
 				{
-					possibleActions.insert(std::unique_ptr<Action>(new Action(Action::Type::PICK_UP,
-						{ airplane, package }, configuration, setting_)));
+					Action* action = new Action(Action::Type::PICK_UP, { airplane, package });
+					LogConfiguration* state = configuration->GetNewConfiguration(*action, setting_);
+					possibleActions.push({ action, state });
 				}
 			}
 		}
@@ -138,8 +143,9 @@ void LogProblem::EnumeratePossibleActions(const std::shared_ptr<IState>& state,
 		{
 			if (airport != airplaneObject.position)
 			{
-				possibleActions.insert(std::unique_ptr<Action>(new Action(Action::Type::FLY,
-					{ airplane, airport }, configuration, setting_)));
+				Action* action = new Action(Action::Type::FLY, { airplane, airport });
+				LogConfiguration* state = configuration->GetNewConfiguration(*action, setting_);
+				possibleActions.push({ action, state });
 			}
 		}
 	}
@@ -177,7 +183,7 @@ LogConfiguration::LogConfiguration(std::vector<Vehicle>& trucks, std::vector<Veh
 	IState::heuristic = heuristic;
 }
 
-std::shared_ptr<LogConfiguration> LogConfiguration::GetNewConfiguration(const Action& action,
+LogConfiguration* LogConfiguration::GetNewConfiguration(const Action& action,
 	const LogSetting& setting) const
 {
 	std::vector<Vehicle> trucks;
@@ -238,7 +244,7 @@ std::shared_ptr<LogConfiguration> LogConfiguration::GetNewConfiguration(const Ac
 	}
 
 	int heuristic = ComputeHeuristic(trucks, airplanes, packages, setting);
-	return std::make_shared<LogConfiguration>(trucks, airplanes, packages, heuristic);
+	return new LogConfiguration(trucks, airplanes, packages, heuristic);
 }
 
 int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
@@ -403,6 +409,15 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 	return cumulativeCost;
 }
 
+IState* LogConfiguration::Clone() const
+{
+	auto trucks = trucks_;
+	auto airplanes = airplanes_;
+	auto packages = packages_;
+	LogConfiguration* result = new LogConfiguration(trucks, airplanes, packages, heuristic);
+	return result;
+}
+
 int LogConfiguration::LoadConfiguration(const std::string& file, const LogSetting& setting)
 {
 	std::ifstream ifs(file);
@@ -531,9 +546,7 @@ int LogSetting::GetPlaceCity(int place) const
 	return places_[place];
 }
 
-Action::Action(Type type, std::pair<int, int> valuePair,
-	std::shared_ptr<LogConfiguration> originalConfiguration,
-	const LogSetting& setting)
+Action::Action(Type type, std::pair<int, int> valuePair)
 	: type(type), valuePair(valuePair)
 {
 	switch (type)
@@ -558,8 +571,6 @@ Action::Action(Type type, std::pair<int, int> valuePair,
 		throw std::runtime_error("Undefined action value!");
 		break;
 	}
-
-	state = originalConfiguration->GetNewConfiguration(*this, setting);
 }
 
 IAction* Action::Clone() const
@@ -567,7 +578,6 @@ IAction* Action::Clone() const
 	Action* result = new Action;
 
 	result->cost = cost;
-	result->state = state;
 	((Action*)result)->type = type;
 	((Action*)result)->valuePair = valuePair;
 

@@ -42,7 +42,6 @@ int main(int argc, char* argv[])
 		LogProblem::OutputSolution(std::cout, solution);
 		std::cout << std::endl << "-- cost: " << cost << std::endl;
 
-		std::ofstream ofs("results.txt", std::ofstream::out | std::ofstream::app);
 		std::cout << "in " << timeElapsedNano / 1000000.f << " ms" << std::endl;
 	}
 
