@@ -72,7 +72,7 @@ int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAct
 				}
 			}
 
-			// Enumerate all the states that are reachable (by an action) from the best node state to the fringe.
+			// Enumerate all the states that are reachable (by an action) from the best node state of the fringe.
 			std::queue<std::pair<IAction*, IState*>> actions;
 
 			problem.EnumeratePossibleActions(state, actions);

@@ -330,11 +330,8 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 		}
 	}
 
-	int rideCount = 0;
-	int flightCount = 0;
-
-	rideCount += rideDestinations.size();
-	flightCount += flightDestinations.size();
+	int rideCount = rideDestinations.size();
+	int flightCount = flightDestinations.size();
 	
 	cumulativeCost += rideCount * 17;
 	cumulativeCost += flightCount * 1000;
