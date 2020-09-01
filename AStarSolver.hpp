@@ -16,6 +16,5 @@ public:
 	// but only to the best state found in the allowed iterations.
 	int Solve(const IProblem& problem, std::vector<std::unique_ptr<IAction>>& solution, int maxIterations = INT32_MAX);
 private:
-	static int NodeHeuristicCost(Node const* node, const std::shared_ptr<IState>& initialState);
 	static Node* MakeNode(Node const* originalNode, IAction* action, IState* state, int heuristicCost);
 };

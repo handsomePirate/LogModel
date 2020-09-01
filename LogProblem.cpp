@@ -5,6 +5,12 @@
 #include <map>
 #include <set>
 
+//#define OVERCAPACITY_LOG
+
+#ifdef OVERCAPACITY_LOG
+#include <iostream>
+#endif
+
 LogProblem::LogProblem(const std::string& file)
 	: setting_(file), initialConfiguration_(
 		std::make_unique<LogConfiguration>(file, setting_)) {}
@@ -118,6 +124,12 @@ void LogProblem::EnumeratePossibleActions(IState const* state,
 					LogConfiguration* state = configuration->GetNewConfiguration(*action, setting_);
 					possibleActions.push({ action, state });
 				}
+#ifdef OVERCAPACITY_LOG
+				else if (trucks[truck].position == packageObject.position)
+				{
+					std::cout << "Over capacity!" << std::endl;
+				}
+#endif
 			}
 
 			for (int airplane = 0; airplane < airplanes.size(); ++airplane)
@@ -254,9 +266,10 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 {
 	int cumulativeCost = 0;
 
-	std::set<int> rideDestinations;
-	std::set<int> flightDestinations;
+	//std::set<int> rideDestinations;
+	//std::set<int> flightDestinations;
 
+#pragma region countingPackageTransfers
 	// Handle the loading and unloading of packages and cumulate destinations.
 	for (int place = 0; place < setting.PlaceCount(); ++place)
 	{
@@ -278,7 +291,7 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 							cumulativeCost += Action::loadUnloadCost;
 						}
 						cumulativeCost += Action::loadUnloadCost;
-						rideDestinations.insert(package.destination);
+						//rideDestinations.insert(package.destination);
 					}
 					else
 					{
@@ -300,12 +313,12 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 							cumulativeCost += Action::loadUnloadCost;
 						}
 						cumulativeCost += Action::loadUnloadCost;
-						rideDestinations.insert(currentAirport);
+						//rideDestinations.insert(currentAirport);
 					}
 					if (destinationAirport != package.destination)
 					{
 						cumulativeCost += 2 * Action::loadUnloadCost;
-						rideDestinations.insert(package.destination);
+						//rideDestinations.insert(package.destination);
 					}
 
 					if (currentAirport == package.position)
@@ -324,51 +337,178 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 						cumulativeCost += Action::pickUpCost;
 					}
 					cumulativeCost += Action::dropOffCost;
-					flightDestinations.insert(destinationAirport);
+					//flightDestinations.insert(destinationAirport);
 				}
 			}
 		}
 	}
+#pragma endregion
 
-	OrientedGraph rideGraph(setting.PlaceCount());
+#pragma region countingRides
+	int rideLoops = 0;
+	std::set<int> placesToVisitTrucks;
+	for (int city = 0; city < setting.CityCount(); ++city)
+	{
+		// Create an oriented graph for necessary package rides.
+		OrientedGraph rideGraph(setting.GetCityPlaces(city).size());
+
+		for (auto&& package : packages)
+		{
+			if (setting.GetPlaceCity(package.position) == city)
+			{
+				if (setting.GetPlaceCity(package.position) == setting.GetPlaceCity(package.destination))
+				{
+					if (package.position != package.destination)
+					{
+						rideGraph.AddOrientedEdge(package.position, package.destination);
+					}
+				}
+				else
+				{
+					int airport = setting.GetAirports()[setting.GetPlaceCity(package.position)];
+					if (package.position != airport)
+					{
+						rideGraph.AddOrientedEdge(package.position, airport);
+					}
+				}
+			}
+			else if (setting.GetPlaceCity(package.destination) == city)
+			{
+				int airport = setting.GetAirports()[setting.GetPlaceCity(package.destination)];
+				if (airport != package.destination)
+				{
+					rideGraph.AddOrientedEdge(airport, package.destination);
+				}
+			}
+		}
+
+		// Some trucks may already be in a place where there is at least one package.
+		std::set<int> occupiedPlaces;
+		for (auto&& truck : trucks)
+		{
+			for (auto&& package : packages)
+			{
+				if (package.position == truck.position && occupiedPlaces.find(truck.position) == occupiedPlaces.end())
+				{
+					occupiedPlaces.insert(truck.position);
+				}
+			}
+		}
+
+		// Count the loops that will cause a truck to return to alread visited places.
+		rideLoops = rideGraph.GetLoopCount(occupiedPlaces);
+
+		for (auto&& package : packages)
+		{
+			if (package.position != package.destination && 
+				setting.GetPlaceCity(package.position) == setting.GetPlaceCity(package.destination))
+			{
+				if (occupiedPlaces.find(package.position) == occupiedPlaces.end())
+				{
+					placesToVisitTrucks.insert(package.position);
+				}
+				placesToVisitTrucks.insert(package.destination);
+			}
+			else if (setting.GetPlaceCity(package.position) != setting.GetPlaceCity(package.destination))
+			{
+				int posAirport = setting.GetAirports()[setting.GetPlaceCity(package.position)];
+				int destAirport = setting.GetAirports()[setting.GetPlaceCity(package.destination)];
+				if (setting.GetPlaceCity(package.position) == city &&
+					package.position != posAirport)
+				{
+					if (occupiedPlaces.find(package.position) == occupiedPlaces.end())
+					{
+						placesToVisitTrucks.insert(package.position);
+					}
+					placesToVisitTrucks.insert(posAirport);
+				}
+				else if (setting.GetPlaceCity(package.position) == city &&
+					destAirport != package.destination)
+				{
+					if (occupiedPlaces.find(destAirport) == occupiedPlaces.end())
+					{
+						placesToVisitTrucks.insert(destAirport);
+					}
+					placesToVisitTrucks.insert(package.destination);
+				}
+			}
+		}
+		/*
+		int cityPackageScore = 0;
+		for (auto&& package : packages)
+		{
+			int posCity = setting.GetPlaceCity(package.position);
+			if (posCity == city)
+			{
+				--cityPackageScore;
+			}
+		}
+		for (auto&& truck : trucks)
+		{
+			int truckCity = setting.GetPlaceCity(truck.position);
+			if (truckCity == city)
+			{
+				cityPackageScore += 4;
+			}
+		}
+		if (cityPackageScore >= 0)
+		{
+			--cumulativeCost;
+		}*/
+	}
+#pragma endregion
+
+#pragma region countingFlights
+	// Similarly for flights.
+
+	OrientedGraph flightGraph(setting.CityCount());
 
 	for (auto&& package : packages)
 	{
-		if (package.position != package.destination)
+		int positionCity = setting.GetPlaceCity(package.position);
+		int destinationCity = setting.GetPlaceCity(package.destination);
+		if (positionCity != destinationCity)
 		{
-			rideGraph.AddOrientedEdge(package.position, package.destination);
+			flightGraph.AddOrientedEdge(positionCity, destinationCity);
 		}
 	}
 
-	std::set<int> occupiedPlaces;
-	for (auto&& truck : trucks)
+	// Some planes may already be in a city where there is at least one package that needs to fly to a different city.
+	std::set<int> occupiedCities;
+	for (auto&& plane : airplanes)
 	{
 		for (auto&& package : packages)
 		{
-			if (package.position == truck.position && occupiedPlaces.find(truck.position) == occupiedPlaces.end())
+			int packagePositionCity = setting.GetPlaceCity(package.position);
+			int planePositionCity = setting.GetPlaceCity(plane.position);
+			if (packagePositionCity == planePositionCity && occupiedCities.find(planePositionCity) == occupiedCities.end())
 			{
-				occupiedPlaces.insert(truck.position);
+				occupiedCities.insert(planePositionCity);
 			}
 		}
 	}
 
-	int loops = rideGraph.GetLoopCount(occupiedPlaces);
+	// Count the loops that will cause a plane to return to alread visited places.
+	int flightLoops = flightGraph.GetLoopCount(occupiedCities);
 
-	std::set<int> placesToVisitTrucks;
+	std::set<int> placesToVisitPlanes;
 	for (auto&& package : packages)
 	{
-		if (package.position != package.destination)
+		int positionCity = setting.GetPlaceCity(package.position);
+		int destinationCity = setting.GetPlaceCity(package.destination);
+		if (positionCity != destinationCity)
 		{
-			if (occupiedPlaces.find(package.position) == occupiedPlaces.end())
+			if (occupiedCities.find(positionCity) == occupiedCities.end())
 			{
-				placesToVisitTrucks.insert(package.position);
+				placesToVisitPlanes.insert(positionCity);
 			}
-			placesToVisitTrucks.insert(package.destination);
+			placesToVisitPlanes.insert(destinationCity);
 		}
 	}
+#pragma endregion
 
-	int rideCount = placesToVisitTrucks.size() + loops;// rideDestinations.size();
-	int flightCount = flightDestinations.size();
+	int rideCount = placesToVisitTrucks.size() + rideLoops;
+	int flightCount = placesToVisitPlanes.size() + flightLoops;
 	
 	cumulativeCost += rideCount * Action::driveCost;
 	cumulativeCost += flightCount * Action::flyCost;

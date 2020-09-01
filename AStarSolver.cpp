@@ -112,13 +112,6 @@ int AStarSolver::Solve(const IProblem& problem, std::vector<std::unique_ptr<IAct
 	return INT32_MAX;
 }
 
-int AStarSolver::NodeHeuristicCost(Node const* node, const std::shared_ptr<IState>& initialState)
-{
-	int actionLength = (int)node->actionsToReach.size();
-	return node->pathCost + (actionLength ? node->state->Heuristic() :
-		initialState->Heuristic());
-}
-
 Node* AStarSolver::MakeNode(Node const* originalNode, IAction* action, IState* state, int heuristicCost)
 {
 	Node* newNode = new Node;

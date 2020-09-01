@@ -1,20 +1,13 @@
 % city count
 1
 % place count
-10
+3
 % places
 0
 0
 0
-0
-0
-0
-0
-0
-0
-0
 % airports
-2
+0
 % truck count
 1
 % trucks
@@ -22,17 +15,10 @@
 % airplane count
 1
 % airplanes
-2
+0
 % package count
-10
+3
 % packages
-1 2
-5 1
-4 7
-5 1
-8 0
-7 0
-7 0
-9 4
-2 1
-8 3
+0 1
+1 0
+1 0

@@ -16,9 +16,10 @@
 % airports
 2
 % truck count
-1
+2
 % trucks
 0
+6
 % airplane count
 1
 % airplanes

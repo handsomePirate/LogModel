@@ -1,0 +1,76 @@
+% city count
+15
+% place count
+15
+% places
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+% airports
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+% truck count
+15
+% trucks
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+% airplane count
+1
+% airplanes
+6
+% package count
+15
+% packages
+4 8
+3 7
+12 13
+5 1
+7 8
+9 10
+3 4
+9 12
+13 3
+11 8
+13 5
+7 12
+3 6
+7 2
+12 4

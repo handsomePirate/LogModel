@@ -1,12 +1,11 @@
 #pragma once
 #include <vector>
-#include <queue>
 #include <set>
 #include <map>
 
 struct OrientedGraphNode
 {
-	std::queue<int> next;
+	std::set<int> next;
 	std::set<int> back;
 };
 
@@ -14,12 +13,9 @@ class OrientedGraph
 {
 public:
 	OrientedGraph(int maxVertexCount);
-	int GetLoopCount(std::set<int> occupiedPlaces);
+	int GetLoopCount(const std::set<int>& occupiedPlaces);
 	void AddOrientedEdge(int a, int b);
-	int DriveThrough(int from);
-	int FindRideStart() const;
-	std::set<int> EnumerateLooseEnds();
 private:
-	int FindRideStartImpl(int current, std::map<int, int>& visited, bool& ideal, int& ending) const;
+	bool IsCyclicUtil(const std::set<int>& occupiedPlaces, int v, std::vector<bool>& visited, std::vector<bool>& recStack);
 	std::vector<OrientedGraphNode> graph_;
 };

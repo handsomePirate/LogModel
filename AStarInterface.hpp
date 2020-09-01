@@ -6,48 +6,42 @@
 class IState
 {
 public:
+	// Default constructor.
 	IState() {}
 	// Virtual desctructor.
 	virtual ~IState() {};
 
+	// Returns the heuristic property.
 	int Heuristic() const { return heuristic; }
-	virtual IState* Clone() const { return nullptr; };
+	// Allocates and initializes a clone of this state.
+	virtual IState* Clone() const = 0;
 
 protected:
 	// The heuristic value of this state (how close is it to the solution).
-	int heuristic;
+	int heuristic = -1;
 };
 
-// A structure that contains the cost of the action and the state that it takes the search into.
+// A structure that contains the cost of the action.
 class IAction
 {
 public:
-	friend struct IActionHash;
-	int cost;
+	// The cost of this action.
+	int cost = 0;
 
+	// Default constructor.
+	IAction() {};
+	// Virtual destructor.
 	virtual ~IAction() {};
 
-	bool operator==(const IAction& other) const { return false; }
-
+	// Allocates and initializes a clone of this action.
 	virtual IAction* Clone() const = 0;
-
-	IAction()
-		: hash_((size_t)this) {}
-private:
-	size_t hash_;
 };
 
-struct IActionHash
-{
-	size_t operator()(const std::unique_ptr<IAction>& action) const
-	{
-		return action->hash_;
-	}
-};
-
+// A structure that contains the definition of the problem that needs state search solving.
 class IProblem
 {
 public:
+	// Default constructor.
 	IProblem() {}
 	// Virtual destructor.
 	virtual ~IProblem() {}
