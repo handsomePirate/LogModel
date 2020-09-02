@@ -339,6 +339,7 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 
 #pragma region countingRides
 	int rideLoops = 0;
+	int limitRides = 0;
 	std::set<int> placesToVisitTrucks;
 	for (int city = 0; city < setting.CityCount(); ++city)
 	{
@@ -389,7 +390,8 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 		}
 
 		// Count the loops that will cause a truck to return to alread visited places.
-		rideLoops = rideGraph.GetLoopCount(occupiedPlaces);
+		rideLoops += rideGraph.GetLoopCountBreakLoops(occupiedPlaces);
+		limitRides += rideGraph.LimitLayerFlow(4); // TODO: The limit will be multiplied by the number of trucks present in the city.
 
 		for (auto&& package : packages)
 		{
@@ -460,7 +462,8 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 	}
 
 	// Count the loops that will cause a plane to return to alread visited places.
-	int flightLoops = flightGraph.GetLoopCount(occupiedCities);
+	int flightLoops = flightGraph.GetLoopCountBreakLoops(occupiedCities);
+	int limitFlights = flightGraph.LimitLayerFlow(30); // TODO: The limit will be multiplied by the number of airplanes.
 
 	std::set<int> placesToVisitPlanes;
 	for (auto&& package : packages)
@@ -478,8 +481,8 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 	}
 #pragma endregion
 
-	int rideCount = placesToVisitTrucks.size() + rideLoops;
-	int flightCount = placesToVisitPlanes.size() + flightLoops;
+	int rideCount = placesToVisitTrucks.size() + rideLoops + limitRides;
+	int flightCount = placesToVisitPlanes.size() + flightLoops + limitFlights;
 	
 	cumulativeCost += rideCount * Action::driveCost;
 	cumulativeCost += flightCount * Action::flyCost;
