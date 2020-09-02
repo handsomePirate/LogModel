@@ -266,9 +266,6 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 {
 	int cumulativeCost = 0;
 
-	//std::set<int> rideDestinations;
-	//std::set<int> flightDestinations;
-
 #pragma region countingPackageTransfers
 	// Handle the loading and unloading of packages and cumulate destinations.
 	for (int place = 0; place < setting.PlaceCount(); ++place)
@@ -291,7 +288,6 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 							cumulativeCost += Action::loadUnloadCost;
 						}
 						cumulativeCost += Action::loadUnloadCost;
-						//rideDestinations.insert(package.destination);
 					}
 					else
 					{
@@ -313,12 +309,10 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 							cumulativeCost += Action::loadUnloadCost;
 						}
 						cumulativeCost += Action::loadUnloadCost;
-						//rideDestinations.insert(currentAirport);
 					}
 					if (destinationAirport != package.destination)
 					{
 						cumulativeCost += 2 * Action::loadUnloadCost;
-						//rideDestinations.insert(package.destination);
 					}
 
 					if (currentAirport == package.position)
@@ -337,7 +331,6 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 						cumulativeCost += Action::pickUpCost;
 					}
 					cumulativeCost += Action::dropOffCost;
-					//flightDestinations.insert(destinationAirport);
 				}
 			}
 		}
@@ -433,28 +426,6 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 				}
 			}
 		}
-		/*
-		int cityPackageScore = 0;
-		for (auto&& package : packages)
-		{
-			int posCity = setting.GetPlaceCity(package.position);
-			if (posCity == city)
-			{
-				--cityPackageScore;
-			}
-		}
-		for (auto&& truck : trucks)
-		{
-			int truckCity = setting.GetPlaceCity(truck.position);
-			if (truckCity == city)
-			{
-				cityPackageScore += 4;
-			}
-		}
-		if (cityPackageScore >= 0)
-		{
-			--cumulativeCost;
-		}*/
 	}
 #pragma endregion
 

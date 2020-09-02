@@ -29,7 +29,7 @@ int OrientedGraph::GetLoopCount(const std::set<int>& occupiedPlaces)
         last = result;
         for (int i = 0; i < graph_.size(); ++i)
         {
-            if (IsCyclicUtil(occupiedPlaces, i, visited, recStack))
+            if (IsCyclic(occupiedPlaces, i, visited, recStack))
             {
                 ++result;
                 break;
@@ -40,13 +40,12 @@ int OrientedGraph::GetLoopCount(const std::set<int>& occupiedPlaces)
     return result;
 }
 
-void OrientedGraph::AddOrientedEdge(int a, int b)
+void OrientedGraph::AddOrientedEdge(int v1, int v2)
 {
-	graph_[a].next.insert(b);
-	//graph_[b].back.insert(a);
+	graph_[v1].next.insert(v2);
 }
 
-bool OrientedGraph::IsCyclicUtil(const std::set<int>& occupiedPlaces, int v, std::vector<bool>& visited, std::vector<bool>& recStack)
+bool OrientedGraph::IsCyclic(const std::set<int>& occupiedPlaces, int v, std::vector<bool>& visited, std::vector<bool>& recStack)
 {
     if (visited[v] == false)
     {
@@ -57,14 +56,13 @@ bool OrientedGraph::IsCyclicUtil(const std::set<int>& occupiedPlaces, int v, std
         // Recur for all the vertices adjacent to this vertex 
         for (auto i = graph_[v].next.begin(); i != graph_[v].next.end(); ++i)
         {
-            if (!visited[*i] && IsCyclicUtil(occupiedPlaces, *i, visited, recStack))
+            if (!visited[*i] && IsCyclic(occupiedPlaces, *i, visited, recStack))
             {
                 return true;
             }
             else if (recStack[*i] && occupiedPlaces.find(v) == occupiedPlaces.end())
             {
                 graph_[v].next.erase(*i);
-                //graph_[*i].back.erase(v);
                 return true;
             }
         }

@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 		std::vector<std::unique_ptr<IAction>> solution;
 
 		const auto start = std::chrono::high_resolution_clock::now();
-		//std::cout << std::endl << '*' << argv[i] << std::endl;
+		std::cout << std::endl << '*' << argv[i] << std::endl;
 		int cost = solver.Solve(problem, solution);
 		const auto end = std::chrono::high_resolution_clock::now();
 		const auto timeElapsedNano = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
