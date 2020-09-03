@@ -11,7 +11,7 @@
 % truck count
 1
 % trucks
-0
+1
 % airplane count
 1
 % airplanes
@@ -19,6 +19,6 @@
 % package count
 3
 % packages
+1 2
 0 1
-1 0
-1 0
+0 2
