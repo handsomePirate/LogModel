@@ -392,13 +392,7 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 		// Count the loops that will cause a truck to return to alread visited places.
 		rideLoops += rideGraph.GetLoopCountBreakLoops(occupiedPlaces);
 		rideGraph.EstablishLayerFlow();
-		for (auto&& truck : trucks)
-		{
-			if (setting.GetPlaceCity(truck.position) == city)
-			{
-				limitRides += rideGraph.LimitLayerFlow(4);
-			}
-		}
+		limitRides += rideGraph.LimitLayerFlow(4);
 
 		for (auto&& package : packages)
 		{
@@ -471,11 +465,7 @@ int LogConfiguration::ComputeHeuristic(const std::vector<Vehicle>& trucks,
 	// Count the loops that will cause a plane to return to alread visited places.
 	int flightLoops = flightGraph.GetLoopCountBreakLoops(occupiedCities);
 	flightGraph.EstablishLayerFlow();
-	int limitFlights = 0;
-	for (auto&& plane : airplanes)
-	{
-		limitFlights += flightGraph.LimitLayerFlow(30);
-	}
+	int limitFlights = flightGraph.LimitLayerFlow(30);
 
 	std::set<int> placesToVisitPlanes;
 	for (auto&& package : packages)
