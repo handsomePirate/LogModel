@@ -11,6 +11,8 @@ void OrientedGraph::AddOrientedEdge(int v1, int v2)
 {
     graph_[v1].next.insert(v2);
     graph_[v2].back.insert(v1);
+    if (v1 != v2)
+        pairCount_[{v1, v2}]++;
 }
 
 int OrientedGraph::GetLoopCountBreakLoops(const std::set<int>& occupiedPlaces)
@@ -48,12 +50,10 @@ int OrientedGraph::GetLoopCountBreakLoops(const std::set<int>& occupiedPlaces)
     return result;
 }
 
-int OrientedGraph::LimitLayerFlow(int limit)
+void OrientedGraph::EstablishLayerFlow()
 {
     assert(loopsBroken_);
     std::set<int> ignoreSet;
-    std::vector<std::set<int>> layers;
-    std::map<int, int> layerMembership;
 
     for (int i = 0; i < graph_.size(); ++i)
     {
@@ -82,7 +82,7 @@ int OrientedGraph::LimitLayerFlow(int limit)
                 }
                 if (shouldBeInLayer)
                 {
-                    layerMembership[i] = layers.size();
+                    layerMembership_[i] = layers_.size();
                     layer.insert(i);
                 }
             }
@@ -92,19 +92,18 @@ int OrientedGraph::LimitLayerFlow(int limit)
         {
             ignoreSet.insert(layerElement);
         }
-        layers.push_back(layer);
+        layers_.push_back(layer);
     }
 
-    
-    for (int layer = 0; layer < layers.size(); ++layer)
+    for (int layer = layers_.size() - 1; layer >= 0; --layer)
     {
         std::set<int> eraseList;
-        for (auto it = layers[layer].begin(); it != layers[layer].end(); ++it)
+        for (auto it = layers_[layer].begin(); it != layers_[layer].end(); ++it)
         {
             bool shouldBeMoved = true;
             for (auto itNext = graph_[*it].next.begin(); itNext != graph_[*it].next.end(); ++itNext)
             {
-                if (layerMembership[*itNext] == layer + 1)
+                if (layerMembership_[*itNext] == layer + 1)
                 {
                     shouldBeMoved = false;
                     break;
@@ -112,29 +111,44 @@ int OrientedGraph::LimitLayerFlow(int limit)
             }
             if (shouldBeMoved && !graph_[*it].next.empty())
             {
-                ++layerMembership[*it];
-                layers[layer + 1].insert(*it);
+                ++layerMembership_[*it];
+                layers_[layer + 1].insert(*it);
                 eraseList.insert(*it);
             }
         }
         for (auto it = eraseList.begin(); it != eraseList.end(); ++it)
         {
-            layers[layer].erase(*it);
+            layers_[layer].erase(*it);
         }
     }
+}
 
+int OrientedGraph::LimitLayerFlow(int limit)
+{
     int result = 0;
 
     int flow = 0;
-    for (const auto& layer : layers)
+    for (const auto& layer : layers_)
     {
         for (const auto& element : layer)
         {
-            flow += graph_[element].next.size();
-            flow -= graph_[element].back.size();
+            for (const auto& nextElement : graph_[element].next)
+            {
+                flow += pairCount_[{element, nextElement}];
+            }
+            for (const auto& backElement : graph_[element].back)
+            {
+                flow -= pairCount_[{backElement, element}];
+            }
         }
-        result += flow / (limit + 1);
+        result += (flow - 1) / limit;
     }
+
+    int bestResult = result;
+
+    // At this point, it is possible that the layer configuration is still not optimal.
+    // If one was to move multiple nodes connected to each other at the same time, it might get a become a better result.
+    // Unfortunately, there could be many of those moving parts and it would be hard to optimize the layers.
 
     return result;
 }
